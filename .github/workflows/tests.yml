@@ -1,0 +1,23 @@
+name: Verify LectureMate
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript and tests
+        run: |
+          node --check extension/background.js
+          node --check extension/content.js
+          node --check server/server.js
+          node --test tests/server.test.js
+      - name: Build and check Safari userscript
+        run: |
+          node scripts/build-userscript.js
+          node --check dist/LectureMate.user.js
+          git diff --exit-code -- dist/LectureMate.user.js
