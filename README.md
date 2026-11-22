@@ -6,9 +6,9 @@
 
 This is a second, **optional** way to install the same tutor on Safari. Instead of manually packaging/reloading a native Safari extension on every change, a Safari userscript manager maintains the YouTube UI and checks a GitHub-hosted script for updates.
 
-**Prerequisite: the GitHub repository must exist and be PUBLIC for automatic raw-file updates.** The script's update URL targets `https://raw.githubusercontent.com/cyclotronian/LectureMate/main/dist/LectureMate.user.js`. That URL will not work until the repository is created and the source is uploaded. The API key stays on the Mac in `server/.env`; it is not committed to GitHub.
+**Published GitHub source:** The public repository is [cyclotronian/LectureMate](https://github.com/cyclotronian/LectureMate). The auto-update URL is `https://raw.githubusercontent.com/cyclotronian/LectureMate/main/dist/LectureMate.user.js`. Your OpenAI API key stays on your Mac in `server/.env`; it is not committed to GitHub.
 
-One-time steps once the repository exists:
+One-time steps:
 
 1. Install the official [Tampermonkey Safari extension](https://www.tampermonkey.net/) through the Mac App Store, and enable it for YouTube in Safari.
 2. Open the [LectureMate userscript URL](https://raw.githubusercontent.com/cyclotronian/LectureMate/main/dist/LectureMate.user.js) in Safari and install it using Tampermonkey's script manager. Grant only the displayed YouTube and localhost permissions you are comfortable with.
