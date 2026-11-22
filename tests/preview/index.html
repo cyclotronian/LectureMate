@@ -1,0 +1,22 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Causal Inference - YouTube</title><style>
+html, body {margin:0;background:#f9f9f9;font-family:Arial,sans-serif;color:#222}
+#masthead {height:58px;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;gap:24px;padding:0 20px;}
+#logo {font-size:23px;font-weight:bold;color:#111;} #logo span{color:#dd1717;} #search {border:1px solid #ddd;border-radius:22px;padding:12px 20px;width:42%;color:#999}
+#page-manager {padding:24px 30px 30px;} .video {background:#151922;color:#fff;aspect-ratio:16/9;display:grid;place-items:center;max-width:1140px;border-radius:8px;}
+.video .poster {max-width:70%;text-align:center;} .poster h1 {font-size:34px;font-weight:600;} .poster .formula {font:26px Georgia,serif;padding:20px 0;color:#dbe7ff;}
+.subtitle{max-width:1140px;margin:24px 0;font-size:22px;font-weight:bold;}
+</style><link rel="stylesheet" href="../../extension/content.css"></head>
+<body><header id="masthead"><div id="logo"><span>▶</span> YouTube</div><div id="search">Search</div></header>
+<div id="page-manager"><div class="video"><div class="poster"><h1>Causal Inference: Confounding</h1><div class="formula">P(Y | X) ≠ P(Y | do(X))</div><div>▶ Lecture paused at 12:34</div></div></div><div class="subtitle"><ytd-watch-metadata><h1><yt-formatted-string>Causal Inference: Identifying Confounders</yt-formatted-string></h1></ytd-watch-metadata></div></div>
+<video style="display:none"></video>
+<script>
+history.replaceState({},'', '/watch?v=demo123');
+window.browser={storage:{local:{get: async()=>({lm_notes:'Next lesson: backdoor criterion; adjustment sets.'}),set:async()=>{}}}, runtime:{onMessage:{addListener:()=>{}},sendMessage:async({type})=>{
+if(type==='HEALTH')return {ok:true,configured:true,model:'gpt-5.4-mini'};
+if(type==='CAPTIONS')return {ok:false};
+if(type==='CHAT')return {ok:true,answer:'Confounding happens when a third variable influences both treatment and outcome. Even when $X$ has no causal effect on $Y$, we may observe an association.\n\nHere, $Z$ is a common cause. To estimate the causal effect, we may need to adjust for $Z$.',spoken:'Confounding happens when a third variable influences both treatment and outcome.',visual:{type:'dag',title:'A common cause creates confounding',latex:'X \\leftarrow Z \\rightarrow Y',nodes:[{id:'X',label:'Treatment X',x:0.15,y:0.82},{id:'Z',label:'Confounder Z',x:0.5,y:0.12},{id:'Y',label:'Outcome Y',x:0.85,y:0.82}],edges:[{from:'Z',to:'X',label:''},{from:'Z',to:'Y',label:''}]}};
+}}};
+</script>
+<script src="../../extension/content.js"></script>
+<script>setTimeout(()=>{const t=document.getElementById('lm-input');if(t){t.value='Why does confounding create spurious correlation?';document.getElementById('lm-send').click();}},800);</script>
+</body></html>
