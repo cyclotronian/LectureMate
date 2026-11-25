@@ -1,3 +1,5 @@
+> **NOT SUPPORTED IN SAFARI / YOUTUBE (2026-11-25).** The live loader can download GitHub JavaScript but Safari/YouTube's Trusted Types/CSP prevents evaluating it. Do not install or use this experimental loader; disable it. Use the regular LectureMate userscript for now, or package the application as a native Safari Web Extension for supported distribution and managed updates. This file is retained only as an experimental record.
+
 # LectureMate GitHub Live Loader (Safari development)
 
 The **Live Loader** is a stable Tampermonkey userscript that fetches the current `main/dist/LectureMate.user.js` from GitHub every time a YouTube page loads. It does not rely on Tampermonkey's 6-hour update interval.
