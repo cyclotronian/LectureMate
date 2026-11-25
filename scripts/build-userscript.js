@@ -9,6 +9,7 @@ const root = path.resolve(__dirname,'..');
 const source = fs.readFileSync(path.join(root,'extension/content.js'),'utf8');
 const transcriptSource = fs.readFileSync(path.join(root,'extension/transcript.js'),'utf8');
 const playlistSource = fs.readFileSync(path.join(root,'extension/playlist-ui.js'),'utf8');
+const teacherSource = fs.readFileSync(path.join(root,'extension/teacher-playback.js'),'utf8');
 const css = fs.readFileSync(path.join(root,'extension/content.css'),'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root,'extension/manifest.json'),'utf8'));
 const version = manifest.version;
@@ -88,7 +89,7 @@ const updatedPrefix=prefix.replace('const ext = globalThis.browser || globalThis
   'const ext = {runtime:{onMessage:{addListener:()=>{}}}};\n' +
   'const style=document.createElement("style");style.textContent='+JSON.stringify(css)+';document.documentElement.appendChild(style);');
 if (prefix===updatedPrefix) throw Error('Could not replace extension runtime in userscript');
-const body=transcriptSource+'\n'+playlistSource+'\n'+updatedPrefix+helpers+suffix;
+const body=transcriptSource+'\n'+playlistSource+'\n'+teacherSource+'\n'+updatedPrefix+helpers+suffix;
 const downloadURL=process.env.LECTUREMATE_USERSCRIPT_URL || 'https://raw.githubusercontent.com/cyclotronian/LectureMate/main/dist/LectureMate.user.js';
 const updateURL=process.env.LECTUREMATE_UPDATE_METADATA_URL || 'https://raw.githubusercontent.com/cyclotronian/LectureMate/main/dist/LectureMate.meta.js';
 if (!/^https:\/\//.test(downloadURL) || !/^https:\/\//.test(updateURL)) throw Error('Userscript URLs must be HTTPS');
