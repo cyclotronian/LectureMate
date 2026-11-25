@@ -1,5 +1,8 @@
 # LectureMate — Safari AI tutor MVP
 
+> **Transcript fix (v0.1.9, Nov 2026):** LectureMate now reads YouTube's built-in transcript panel first, including the modern `transcript-segment-view-model` rows as well as legacy `ytd-transcript-segment-renderer` rows. It opens YouTube's `Show transcript` button when available and saves timestamped segments for questions. Direct `timedtext` remains a fallback. If the status says transcript unavailable, open `Show transcript` manually on YouTube, then click `Settings → Retry captions`. This is best effort and not yet verified on Safari in the user's session. See [open-source evidence](https://github.com/colluvio/transcopy) and [2026 DOM observations](https://dev.to/alapha888/youtubes-transcript-panel-changed-its-dom-the-new-selectors-that-actually-work-4a2n).
+
+
 > **Safari networking update (v0.1.6, Nov 2026):** YouTube-page requests to the local Node server are blocked by Safari on the tested setup, and Tampermonkey GM requests timed out. The recommended test is now the [native Safari Web Extension](SAFARI_NATIVE_TEST.md), which uses a Safari event-page background and explicit loopback host permissions. Disable the Tampermonkey LectureMate script before testing to avoid duplicate panels. This path has passed source/CI checks but still needs verification in Safari on the Mac; it isn't a confirmed connection fix yet.
 
 **Working source-code MVP** for a same-window YouTube tutor with **typed + voice questions**, spoken responses, conversational history, captions when available, user-added whole-course context, and a structured whiteboard (causal DAGs and equations).
