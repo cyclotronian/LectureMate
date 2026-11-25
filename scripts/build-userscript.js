@@ -26,18 +26,28 @@ function storageSet(values) {
 }
 function gmRequest(url, method, data, timeout) {
   return new Promise((resolve,reject)=>{
-    GM_xmlhttpRequest({url,method,timeout,headers:data?{'Content-Type':'application/json'}:{},
-      data:data?JSON.stringify(data):undefined,
-      onload:resp=>{
-        try{
-          const result=JSON.parse(resp.responseText || '{}');
-          if (resp.status<200 || resp.status>=300) throw Error(result.error||'HTTP '+resp.status);
-          resolve(result);
-        }catch(e){reject(e);}
-      },
-      onerror:()=>reject(Error('Could not connect to the requested service')),
-      ontimeout:()=>reject(Error('Request timed out'))
-    });
+    let finished=false;
+    const timer=setTimeout(()=>finish(new Error('No response from '+new URL(url).hostname+' after '+Math.ceil(timeout/1000)+'s')),timeout+500);
+    function finish(error,result){
+      if(finished)return;
+      finished=true;clearTimeout(timer);
+      if(error)reject(error);else resolve(result);
+    }
+    try{
+      GM_xmlhttpRequest({url,method,timeout,headers:data?{'Content-Type':'application/json'}:{},
+        data:data?JSON.stringify(data):undefined,
+        onload:resp=>{
+          try{
+            const result=JSON.parse(resp.responseText || '{}');
+            if (resp.status<200 || resp.status>=300) throw Error(result.error||'HTTP '+resp.status);
+            finish(null,result);
+          }catch(e){finish(e);}
+        },
+        onerror:()=>finish(Error('Request blocked or local server unreachable')),
+        ontimeout:()=>finish(Error('Request timed out')),
+        onabort:()=>finish(Error('Request aborted'))
+      });
+    }catch(e){finish(e);}
   });
 }
 function sendMessage(message) {
