@@ -10,6 +10,13 @@ platform.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'CHAT') return await chat(request.payload);
     if (request.type === 'CAPTIONS') return await getCaptions(request.url);
     if (request.type === 'HEALTH') return await health();
+    if (request.type === 'PLAYLIST_SYNC') return await playlistRequest('/api/playlist/sync','POST',request.payload);
+    if (request.type === 'PLAYLIST_RETRY') return await playlistRequest('/api/playlist/retry','POST',request.payload);
+    if (request.type === 'PLAYLIST_STATUS') {
+      const id=String(request.playlistId||'');
+      if(!/^[A-Za-z0-9_-]{10,64}$/.test(id))return {ok:false,error:'Invalid playlist ID'};
+      return await playlistRequest('/api/playlist/status?list='+encodeURIComponent(id),'GET');
+    }
     return { ok: false, error: 'Unknown request' };
   })().then(sendResponse).catch(err => sendResponse({ok:false, error:String(err?.message || err)}));
   return true;
@@ -88,4 +95,18 @@ async function getCaptions(rawUrl) {
     return {ok:true,segments:entries.slice(0,20000)};
   } catch (e) { return {ok:false,error:String(e?.message || e)}; }
   finally { clearTimeout(timer); }
+}
+
+async function playlistRequest(route,method='GET',payload){
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),10000);
+  try{
+    const options={method,signal:controller.signal,cache:'no-store'};
+    if(method==='POST'){options.headers={'Content-Type':'application/json'};options.body=JSON.stringify(payload||{});}
+    const response=await fetch('http://127.0.0.1:8787'+route,options);
+    const data=await response.json();
+    if(!response.ok || !data.ok)return {ok:false,error:data.error||'Playlist request HTTP '+response.status};
+    return data;
+  }catch(e){return {ok:false,error:'Playlist connection failed: '+(e?.message||e)};}
+  finally{clearTimeout(timeout);}
 }
