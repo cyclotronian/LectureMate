@@ -328,8 +328,11 @@ async function ask(fromVoice=false){
     if(!response?.ok)throw Error(response?.error||'Tutor server did not respond');
     const msg={role:'assistant',text:safeText(response.answer),spoken:safeText(response.spoken),visual:response.visual||{type:'none'},teachingSteps:Array.isArray(response.teachingSteps)?response.teachingSteps:[]};
     S.history.push(msg);addMessage(msg);
-    S.currentBoardMessage=msg;S.currentBoardVisual=null;S.boardHidden=false;
-    renderBoard(msg.visual);
+    if(globalThis.LectureMateTeacher?.isVisual(msg.visual)){
+      S.currentBoardMessage=msg;S.boardHidden=false;
+      renderBoard(msg.visual);
+    }
+    // Keep the previous diagram available when a follow-up answer has no new visual.
     if(S.voiceEnabled||fromVoice)playReply(msg);
     storageSet({['lm_history_'+S.videoId]:S.history.slice(-60)});
   }catch(e){
