@@ -1,5 +1,7 @@
 # LectureMate — Safari AI tutor MVP
 
+> **Safari networking update (v0.1.6, Nov 2026):** YouTube-page requests to the local Node server are blocked by Safari on the tested setup, and Tampermonkey GM requests timed out. The recommended test is now the [native Safari Web Extension](SAFARI_NATIVE_TEST.md), which uses a Safari event-page background and explicit loopback host permissions. Disable the Tampermonkey LectureMate script before testing to avoid duplicate panels. This path has passed source/CI checks but still needs verification in Safari on the Mac; it isn't a confirmed connection fix yet.
+
 **Working source-code MVP** for a same-window YouTube tutor with **typed + voice questions**, spoken responses, conversational history, captions when available, user-added whole-course context, and a structured whiteboard (causal DAGs and equations).
 
 ## Fast-iteration setup (recommended): Safari + Tampermonkey + GitHub
