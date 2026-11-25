@@ -50,9 +50,20 @@ function gmRequest(url, method, data, timeout) {
     }catch(e){finish(e);}
   });
 }
+// Some Safari/Tampermonkey versions silently fail on numeric loopback IPs.
+ // Prefer localhost while preserving 127.0.0.1 as a fallback.
+async function localRequest(path,method,payload,timeout) {
+  let lastError;
+  for (const host of ['localhost','127.0.0.1']) {
+    try {
+      return await gmRequest('http://'+host+':8787'+path,method,payload,timeout);
+    } catch(e) {lastError=e;}
+  }
+  throw new Error('Could not connect using localhost or 127.0.0.1: '+(lastError?.message||'unknown error'));
+}
 function sendMessage(message) {
-  if (message?.type==='CHAT') return gmRequest('http://127.0.0.1:8787/api/chat','POST',message.payload,90000);
-  if (message?.type==='HEALTH') return gmRequest('http://127.0.0.1:8787/health','GET',null,4000);
+  if (message?.type==='CHAT') return localRequest('/api/chat','POST',message.payload,90000);
+  if (message?.type==='HEALTH') return localRequest('/health','GET',null,3500);
   if (message?.type==='CAPTIONS') {
     let url;
     try{
@@ -90,6 +101,7 @@ const metadata=[
   '// @grant        GM_getValue',
   '// @grant        GM_setValue',
   '// @grant        GM_xmlhttpRequest',
+  '// @connect      localhost',
   '// @connect      127.0.0.1',
   '// @connect      www.youtube.com',
   '// @updateURL    '+updateURL,
