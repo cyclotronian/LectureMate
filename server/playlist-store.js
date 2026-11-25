@@ -119,7 +119,14 @@ function run(command,args,timeoutMs){
     });
   });
 }
-function ytDlpBinary(){return process.env.LECTUREMATE_YT_DLP || 'yt-dlp';}
+function ytDlpBinary(){
+  if(process.env.LECTUREMATE_YT_DLP)return process.env.LECTUREMATE_YT_DLP;
+  // launchd services have a minimal PATH and may not find Homebrew binaries.
+  for(const p of ['/opt/homebrew/bin/yt-dlp','/usr/local/bin/yt-dlp']){
+    if(fs.existsSync(p))return p;
+  }
+  return 'yt-dlp';
+}
 async function discover(id){
   const text=await run(ytDlpBinary(),['--no-config','--flat-playlist','--dump-single-json','--playlist-end',String(MAX_VIDEOS+1),'--no-warnings','--','https://www.youtube.com/playlist?list='+id],60000);
   const p=JSON.parse(text);
