@@ -74,7 +74,7 @@ async function getCaptions(rawUrl) {
   } catch (_) { return {ok:false,error:'Caption track URL was unavailable or invalid.'}; }
   url.searchParams.set('fmt','json3');
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 14000);
+  const timer = setTimeout(() => controller.abort(), 8000);
   try {
     const response = await fetch(url.href, {signal:controller.signal,credentials:'include'});
     if (!response.ok) throw Error(`YouTube captions returned HTTP ${response.status}`);
