@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LectureMate - AI Video Tutor
 // @namespace    https://github.com/cyclotronian/LectureMate
-// @version      0.1.6
+// @version      0.1.7
 // @description  Ask contextual questions by typing or voice beside YouTube; get visual explanations.
 // @match        https://www.youtube.com/*
 // @run-at       document-end
@@ -80,7 +80,7 @@ async function localRequest(path,method,payload,timeout) {
 }
 function sendMessage(message) {
   if (message?.type==='CHAT') return localRequest('/api/chat','POST',message.payload,90000);
-  if (message?.type==='HEALTH') return localRequest('/health','GET',null,3500);
+  if (message?.type==='HEALTH') return localRequest('/health','GET',null,3500).then(data=>({...data,transport:'Tampermonkey'}));
   if (message?.type==='CAPTIONS') {
     let url;
     try{
@@ -430,10 +430,22 @@ async function checkHealth(){
       sendMessage({type:'HEALTH'}),
       new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Tampermonkey timed out')),9500);})
     ]);
-    el.textContent=data?.ok?(data.configured?'Connected ✓':'Needs API key'): 'Offline — invalid health response';
-    el.className=data?.ok&&data.configured?'lm-success':'lm-warning';
-    r('lm-model').textContent=data?.model||'—';
-    r('lm-mini').className=data?.ok&&data.configured?'lm-success':'lm-warning';
+    const channel=data?.transport || (ext?.runtime?.onMessage?.addListener ? 'Extension messaging' : 'Unknown');
+    if(data?.ok === true) {
+      el.textContent=data.configured?'Connected ✓':'Needs API key';
+      el.className=data.configured?'lm-success':'lm-warning';
+      r('lm-model').textContent=data?.model||'—';
+      r('lm-mini').className=data.configured?'lm-success':'lm-warning';
+      setFeedback('');
+    } else {
+      const reason=String(data?.error || 'No valid response from the extension background');
+      el.textContent='Offline — '+reason;
+      el.className='lm-warning';
+      r('lm-mini').className='lm-warning';
+      r('lm-model').textContent='—';
+      console.warn('[LectureMate] Health check failed via '+channel+':',reason);
+      setFeedback('Connection via '+channel+': '+reason,true);
+    }
   }catch(gmError){
     el.textContent='Checking browser access…';
     const controller=new AbortController();
