@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LectureMate - AI Video Tutor
 // @namespace    https://github.com/cyclotronian/LectureMate
-// @version      0.1.1
+// @version      0.1.2
 // @description  Ask contextual questions by typing or voice beside YouTube; get visual explanations.
 // @match        https://www.youtube.com/*
 // @run-at       document-end
@@ -42,18 +42,28 @@ function storageSet(values) {
 }
 function gmRequest(url, method, data, timeout) {
   return new Promise((resolve,reject)=>{
-    GM_xmlhttpRequest({url,method,timeout,headers:data?{'Content-Type':'application/json'}:{},
-      data:data?JSON.stringify(data):undefined,
-      onload:resp=>{
-        try{
-          const result=JSON.parse(resp.responseText || '{}');
-          if (resp.status<200 || resp.status>=300) throw Error(result.error||'HTTP '+resp.status);
-          resolve(result);
-        }catch(e){reject(e);}
-      },
-      onerror:()=>reject(Error('Could not connect to the requested service')),
-      ontimeout:()=>reject(Error('Request timed out'))
-    });
+    let finished=false;
+    const timer=setTimeout(()=>finish(new Error('No response from '+new URL(url).hostname+' after '+Math.ceil(timeout/1000)+'s')),timeout+500);
+    function finish(error,result){
+      if(finished)return;
+      finished=true;clearTimeout(timer);
+      if(error)reject(error);else resolve(result);
+    }
+    try{
+      GM_xmlhttpRequest({url,method,timeout,headers:data?{'Content-Type':'application/json'}:{},
+        data:data?JSON.stringify(data):undefined,
+        onload:resp=>{
+          try{
+            const result=JSON.parse(resp.responseText || '{}');
+            if (resp.status<200 || resp.status>=300) throw Error(result.error||'HTTP '+resp.status);
+            finish(null,result);
+          }catch(e){finish(e);}
+        },
+        onerror:()=>finish(Error('Request blocked or local server unreachable')),
+        ontimeout:()=>finish(Error('Request timed out')),
+        onabort:()=>finish(Error('Request aborted'))
+      });
+    }catch(e){finish(e);}
   });
 }
 function sendMessage(message) {
@@ -396,11 +406,22 @@ async function onNavigation(force=false){
 }
 async function checkHealth(){
   r('lm-health').textContent='Checking…';
-  try{const data=await sendMessage({type:'HEALTH'});
+  // In some Safari/Tampermonkey builds GM_xmlhttpRequest does not invoke its
+  // timeout callback. Use an independent watchdog so the UI never hangs.
+  let timer;
+  try{
+    const data=await Promise.race([
+      sendMessage({type:'HEALTH'}),
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Connection timed out')),7000);})
+    ]);
     r('lm-health').textContent=data?.ok?(data.configured?'Connected ✓':'Needs API key'): 'Offline';
     r('lm-health').className=data?.ok&&data.configured?'lm-success':'lm-warning';
     r('lm-model').textContent=data?.model||'—';r('lm-mini').className=data?.ok&&data.configured?'lm-success':'lm-warning';
-  }catch(_){r('lm-health').textContent='Offline';r('lm-mini').className='lm-warning';}
+  }catch(e){
+    r('lm-health').textContent='Offline — '+(e?.message||'connection failed');
+    r('lm-mini').className='lm-warning';
+    r('lm-model').textContent='—';
+  }finally{clearTimeout(timer);}
 }
 r('lm-mini').addEventListener('click',()=>showView('about'));
 r('lm-check-health').addEventListener('click',checkHealth);
