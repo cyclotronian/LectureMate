@@ -4,7 +4,9 @@ const platform = globalThis.browser || globalThis.chrome;
 platform.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (!request || typeof request.type !== 'string') return false;
   (async () => {
-    if (!sender?.url?.startsWith('https://www.youtube.com/')) return {ok:false,error:'Only YouTube tabs may send requests to LectureMate'};
+    const pageUrl=sender?.url || sender?.tab?.url || sender?.origin || '';
+    if (!pageUrl.startsWith('https://www.youtube.com/'))
+      return {ok:false,transport:'Safari Web Extension',error:'Rejected message: sender is not a recognized YouTube page (sender URL '+(pageUrl?'present':'missing')+').'};
     if (request.type === 'CHAT') return await chat(request.payload);
     if (request.type === 'CAPTIONS') return await getCaptions(request.url);
     if (request.type === 'HEALTH') return await health();
@@ -26,10 +28,10 @@ async function health() {
   try {
     const r = await fetch('http://127.0.0.1:8787/health', {signal:controller.signal,cache:'no-store'});
     if (!r.ok) throw new Error(`Local server returned ${r.status}`);
-    return {ok:true, ...await r.json()};
+    return {ok:true, ...await r.json(),transport:'Safari Web Extension'};
   } catch(e) {
     const reason=e?.name==='AbortError'?'Timed out after 4 seconds':String(e?.message||e);
-    return {ok:false,error:'Safari extension could not reach local AI server: '+reason+'. Check Safari extension website permission for 127.0.0.1.'};
+    return {ok:false,transport:'Safari Web Extension',error:'Background fetch to 127.0.0.1:8787 failed: '+reason+'. Confirm the LectureMate (not Tampermonkey) extension has host access to 127.0.0.1.'};
   }
   finally { clearTimeout(timer); }
 }
