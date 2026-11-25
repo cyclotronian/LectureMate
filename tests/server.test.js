@@ -54,3 +54,23 @@ test('model request preserves the latest question, full lecture and future-cours
     assert.equal(requested.input.length,3);
   } finally {global.fetch=oldFetch;}
 });
+
+test('YouTube can read only the local health route with CORS',async()=>{
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  try {
+    const base=`http://127.0.0.1:${server.address().port}`;
+    const response=await fetch(base+'/health?debug=1',{headers:{Origin:'https://www.youtube.com'}});
+    assert.equal(response.status,200);
+    assert.equal(response.headers.get('access-control-allow-origin'),'https://www.youtube.com');
+    const body=await response.json();
+    assert.equal(body.ok,true);
+    assert.equal(body.configured,true);
+    assert.equal(JSON.stringify(body).includes('test-not-real'),false);
+    const blocked=await fetch(base+'/api/chat',{method:'POST',headers:{Origin:'https://www.youtube.com','Content-Type':'application/json'},body:'{}'});
+    assert.equal(blocked.status,403);
+    assert.equal(blocked.headers.get('access-control-allow-origin'),null);
+    const wrong=await fetch(base+'/health',{headers:{Origin:'https://untrusted.example'}});
+    assert.equal(wrong.status,403);
+    assert.equal(wrong.headers.get('access-control-allow-origin'),null);
+  }finally{await new Promise(resolve=>server.close(resolve));}
+});
