@@ -1,16 +1,39 @@
 {
   "manifest_version": 3,
   "name": "LectureMate — AI Video Tutor",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Ask questions by typing or voice while watching YouTube; learn with a conversation and whiteboard.",
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://www.youtube.com/*", "http://127.0.0.1:8787/*"],
-  "background": { "service_worker": "background.js" },
-  "action": { "default_title": "Toggle LectureMate" },
-  "content_scripts": [{
-    "matches": ["https://www.youtube.com/*"],
-    "js": ["content.js"],
-    "css": ["content.css"],
-    "run_at": "document_idle"
-  }]
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "http://127.0.0.1:8787/*",
+    "http://localhost:8787/*"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ],
+    "service_worker": "background.js",
+    "persistent": false
+  },
+  "action": {
+    "default_title": "Toggle LectureMate"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }
