@@ -84,14 +84,17 @@ function makeContext(p) {
     `OTHER COURSE MATERIALS (may include later lessons):\n${relevantParts(p.courseNotes,q,23000)||'(No additional course materials supplied)'}`
   ].join('\n\n');
 }
-function sendJSON(res,status,obj,origin) {
+// Only the read-only health endpoint is CORS-readable by the YouTube page.
+ // Never expose /api/chat or the API key to arbitrary YouTube-origin JavaScript.
+function sendJSON(res,status,obj,origin,readOnlyHealth=false) {
   const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',
     'X-Content-Type-Options':'nosniff'};
-  if (origin && (/^(safari-web-extension|chrome-extension|moz-extension):\/\//i.test(origin))) {
+  if (origin && (/^(safari-web-extension|chrome-extension|moz-extension):\/\//i.test(origin) ||
+     (readOnlyHealth && origin==='https://www.youtube.com'))) {
     headers['Access-Control-Allow-Origin']=origin;
     headers['Vary']='Origin';
     headers['Access-Control-Allow-Headers']='content-type';
-    headers['Access-Control-Allow-Methods']='POST,GET,OPTIONS';
+    headers['Access-Control-Allow-Methods']=readOnlyHealth?'GET,OPTIONS':'POST,GET,OPTIONS';
   }
   res.writeHead(status,headers);
   res.end(JSON.stringify(obj));
@@ -131,11 +134,14 @@ async function requestOpenAI(payload) {
 }
 const server=http.createServer(async (req,res)=>{
   const origin=req.headers.origin||'';
-  if (!isAllowedOrigin(origin)) return sendJSON(res,403,{ok:false,error:'Browser origin is not allowed'},origin);
-  if (req.method==='OPTIONS') return sendJSON(res,204,{},origin);
-  if (req.method==='GET' && req.url==='/health')
-    return sendJSON(res,200,{ok:true,configured:!!API_KEY,model:MODEL},origin);
-  if (req.method==='POST' && req.url==='/api/chat') {
+  const pathname=new URL(req.url,'http://127.0.0.1').pathname;
+  const publicHealth=pathname==='/health';
+  if (!isAllowedOrigin(origin) && !(publicHealth && origin==='https://www.youtube.com'))
+    return sendJSON(res,403,{ok:false,error:'Browser origin is not allowed'},origin);
+  if (req.method==='OPTIONS') return sendJSON(res,204,{},origin,publicHealth);
+  if (req.method==='GET' && publicHealth)
+    return sendJSON(res,200,{ok:true,configured:!!API_KEY,model:MODEL},origin,true);
+  if (req.method==='POST' && pathname==='/api/chat') {
     if (!String(req.headers['content-type']||'').startsWith('application/json'))
       return sendJSON(res,415,{ok:false,error:'Content-Type must be application/json'},origin);
     if (!API_KEY) return sendJSON(res,400,{ok:false,error:'Add OPENAI_API_KEY to server/.env and restart the server'},origin);
