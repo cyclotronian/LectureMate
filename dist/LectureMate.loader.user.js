@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LectureMate - GitHub Live Loader
 // @namespace    https://github.com/cyclotronian/LectureMate
-// @version      1.0.0
+// @version      1.0.1
 // @description  Loads the latest LectureMate source from its GitHub repository whenever YouTube opens.
 // @match        https://www.youtube.com/*
 // @run-at       document-end
@@ -88,9 +88,17 @@
     try {
       const code = await request(SOURCE);
       const version = versionOf(code);
-      // This deliberately executes the current script fetched from the owner's GitHub.
-      // A direct eval keeps Tampermonkey's GM_* functions available to LectureMate.
-      eval(code);
+      // YouTube enforces Trusted Types at JavaScript evaluation sinks.
+      // Only code fetched from the fixed, owner-controlled GitHub URL above
+      // reaches this point. CSP may still disallow dynamic evaluation entirely.
+      let scriptToRun = code;
+      if (globalThis.trustedTypes?.createPolicy) {
+        const policy = globalThis.trustedTypes.createPolicy('lecturemate-loader-script-v101', {
+          createScript: text => text
+        });
+        scriptToRun = policy.createScript(code);
+      }
+      eval(scriptToRun);
       loadedVersion = version;
       console.info('[LectureMate loader] loaded GitHub version', version);
       if (!document.getElementById('lm-root')) {
