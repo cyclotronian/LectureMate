@@ -1,3 +1,5 @@
+> **v0.1.8 update:** Removed the port number from `host_permissions` (now `http://127.0.0.1/*`) and removed the `service_worker` declaration so Safari uses a background event page. Port 8787 remains in the actual request. Because the manifest changed, remove the old temporary LectureMate extension from Safari and load the updated `extension/` folder again, then grant access to `127.0.0.1` under LectureMate's permissions. If there is still an error, check whether Safari granted that permission and copy the new diagnostic. <https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Match_patterns>
+
 # LectureMate — Native Safari Connection Test (v0.1.6)
 
 The YouTube page's ordinary `fetch('http://127.0.0.1:8787/health')` was blocked by Safari access controls, while `curl` and navigating directly to the server worked. Tampermonkey's `GM_xmlhttpRequest` also timed out. This test changes the request source: a Safari **Web Extension background event page** requests the local server on behalf of a YouTube content script, using declared host permissions.
