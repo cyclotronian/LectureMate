@@ -16,8 +16,10 @@ jobs:
           node --check extension/background.js
           node --check extension/transcript.js
           node --check extension/content.js
+          node --check extension/playlist-ui.js
+          node --check server/playlist-store.js
           node --check server/server.js
-          node --test tests/server.test.js tests/transcript.test.js
+          node --test tests/server.test.js tests/transcript.test.js tests/playlist.test.js
       - name: Build and check Safari userscript
         run: |
           node scripts/build-userscript.js
