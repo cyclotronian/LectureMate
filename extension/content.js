@@ -363,11 +363,22 @@ async function onNavigation(force=false){
 }
 async function checkHealth(){
   r('lm-health').textContent='Checking…';
-  try{const data=await sendMessage({type:'HEALTH'});
+  // In some Safari/Tampermonkey builds GM_xmlhttpRequest does not invoke its
+  // timeout callback. Use an independent watchdog so the UI never hangs.
+  let timer;
+  try{
+    const data=await Promise.race([
+      sendMessage({type:'HEALTH'}),
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Connection timed out')),7000);})
+    ]);
     r('lm-health').textContent=data?.ok?(data.configured?'Connected ✓':'Needs API key'): 'Offline';
     r('lm-health').className=data?.ok&&data.configured?'lm-success':'lm-warning';
     r('lm-model').textContent=data?.model||'—';r('lm-mini').className=data?.ok&&data.configured?'lm-success':'lm-warning';
-  }catch(_){r('lm-health').textContent='Offline';r('lm-mini').className='lm-warning';}
+  }catch(e){
+    r('lm-health').textContent='Offline — '+(e?.message||'connection failed');
+    r('lm-mini').className='lm-warning';
+    r('lm-model').textContent='—';
+  }finally{clearTimeout(timer);}
 }
 r('lm-mini').addEventListener('click',()=>showView('about'));
 r('lm-check-health').addEventListener('click',checkHealth);
