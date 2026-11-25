@@ -1,5 +1,7 @@
 # LectureMate — Safari AI tutor MVP
 
+> **Current recommended setup (v0.2.1): native Safari Web Extension**, not Tampermonkey. The Safari extension successfully connects to the local AI server. It now supports **playlist-wide transcript indexing** (optional `yt-dlp`) and **replayable spoken lessons with staged whiteboard visuals**. See [Playlist setup](PLAYLIST_SETUP.md) and [Teacher playback setup](TEACHER_PLAYBACK_SETUP.md). The Tampermonkey workflow below is retained for reference, but its Safari localhost transport failed on the tested machine.
+
 > **Transcript fix (v0.1.9, Nov 2026):** LectureMate now reads YouTube's built-in transcript panel first, including the modern `transcript-segment-view-model` rows as well as legacy `ytd-transcript-segment-renderer` rows. It opens YouTube's `Show transcript` button when available and saves timestamped segments for questions. Direct `timedtext` remains a fallback. If the status says transcript unavailable, open `Show transcript` manually on YouTube, then click `Settings → Retry captions`. This is best effort and not yet verified on Safari in the user's session. See [open-source evidence](https://github.com/colluvio/transcopy) and [2026 DOM observations](https://dev.to/alapha888/youtubes-transcript-panel-changed-its-dom-the-new-selectors-that-actually-work-4a2n).
 
 
@@ -86,11 +88,11 @@ If Safari speech recognition is unavailable, type instead or use macOS system Di
 | --- | --- |
 | Same-window, adjustable panel | Yes |
 | Text and voice questions in one shared chat | Yes |
-| Spoken replies (tap-to-talk) | Yes, via Web Speech APIs |
+| Spoken replies (tap-to-talk) | Yes; replay any answer and narrate teaching stages with Web Speech APIs |
 | Auto-identify current video + timestamp | Yes |
 | Fetch whole-current-video captions | Best effort; YouTube may block timedtext endpoints |
 | Access future course materials | Yes, when supplied in Course material |
-| Automatically ingest an entire playlist | **No** (future iteration) |
+| Automatically ingest an entire playlist | **Yes, when `yt-dlp` is installed and captions are available; see indexing status** |
 | See video frames/slide images | **No** (future iteration) |
 | Diagrams/equations | Structured DAG / formatted basic mathematical notation (not complete LaTeX typesetting) |
 | Continuous low-latency duplex voice | **No** (future iteration) |
