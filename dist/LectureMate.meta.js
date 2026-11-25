@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LectureMate - AI Video Tutor
 // @namespace    https://github.com/cyclotronian/LectureMate
-// @version      0.1.4
+// @version      0.1.5
 // @description  Ask contextual questions by typing or voice beside YouTube; get visual explanations.
 // @match        https://www.youtube.com/*
 // @run-at       document-end
