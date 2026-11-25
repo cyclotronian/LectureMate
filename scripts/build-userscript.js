@@ -63,7 +63,7 @@ async function localRequest(path,method,payload,timeout) {
 }
 function sendMessage(message) {
   if (message?.type==='CHAT') return localRequest('/api/chat','POST',message.payload,90000);
-  if (message?.type==='HEALTH') return localRequest('/health','GET',null,3500);
+  if (message?.type==='HEALTH') return localRequest('/health','GET',null,3500).then(data=>({...data,transport:'Tampermonkey'}));
   if (message?.type==='CAPTIONS') {
     let url;
     try{
