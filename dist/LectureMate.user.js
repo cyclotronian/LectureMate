@@ -545,7 +545,8 @@ function renderBoard(visual,index=0,total=0,done=true){
 }
 function showBoardForMessage(msg){
   if(!globalThis.LectureMateTeacher?.isVisual(msg?.visual))return;
-  if(teacher?.isPlaying(msg))stopSpeech();
+  // Selecting another diagram interrupts any currently narrated lesson.
+  stopSpeech();
   S.currentBoardMessage=msg;S.boardHidden=false;
   renderBoard(msg.visual);
 }
