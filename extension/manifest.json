@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LectureMate — AI Video Tutor",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Ask questions by typing or voice while watching YouTube; learn with a conversation and whiteboard.",
   "permissions": [
     "storage",
@@ -29,6 +29,7 @@
       "js": [
         "transcript.js",
         "playlist-ui.js",
+        "teacher-playback.js",
         "content.js"
       ],
       "css": [
