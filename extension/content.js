@@ -268,7 +268,7 @@ async function ask(fromVoice=false){
   S.history.push({role:'user',text:question,time});r('lm-input').value='';renderMessages();
   setFeedback('');S.waiting=true;r('lm-send').disabled=true;r('lm-busy').hidden=false;
   try{
-    const response=await sendMessage({type:'CHAT',payload:{question,history:previous,video:{id:S.videoId,title:S.videoTitle,time,url:location.href,transcript:S.transcript},courseNotes:S.notes}});
+    const response=await sendMessage({type:'CHAT',payload:{question,history:previous,video:{id:S.videoId,title:S.videoTitle,time,url:location.href,transcript:S.transcript},playlistId:globalThis.LectureMatePlaylist?.currentId()||'',courseNotes:S.notes}});
     if(!response?.ok)throw Error(response?.error||'Tutor server did not respond');
     const msg={role:'assistant',text:safeText(response.answer),spoken:safeText(response.spoken),visual:response.visual||{type:'none'}};
     S.history.push(msg);addMessage(msg);renderBoard(msg.visual);
@@ -489,4 +489,5 @@ setInterval(()=>{
   if(!S.transcript.length){const seg=transcriptFromDOM();if(seg.length){S.transcript=seg;S.transcriptState='YouTube transcript: '+seg.length+' timestamped segments';updateContextStatus();}}
 },2500);
 init();
+globalThis.LectureMatePlaylist?.init({S,sendMessage,r});
 })();
