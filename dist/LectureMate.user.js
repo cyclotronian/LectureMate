@@ -424,7 +424,7 @@ async function checkHealth(){
   try{
     const data=await Promise.race([
       sendMessage({type:'HEALTH'}),
-      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Connection timed out')),7000);})
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Connection timed out after checking localhost and 127.0.0.1')),11000);})
     ]);
     r('lm-health').textContent=data?.ok?(data.configured?'Connected ✓':'Needs API key'): 'Offline';
     r('lm-health').className=data?.ok&&data.configured?'lm-success':'lm-warning';
