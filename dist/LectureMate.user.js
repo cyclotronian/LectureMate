@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LectureMate - AI Video Tutor
 // @namespace    https://github.com/cyclotronian/LectureMate
-// @version      0.1.4
+// @version      0.1.5
 // @description  Ask contextual questions by typing or voice beside YouTube; get visual explanations.
 // @match        https://www.youtube.com/*
 // @run-at       document-end
@@ -416,24 +416,43 @@ async function onNavigation(force=false){
   r('lm-title').textContent=S.videoTitle;
   r('lm-board').hidden=true;renderMessages();updatePosition();updateTime();loadCaptions();
 }
+// Test the actual Tampermonkey transport first. When it fails, check whether
+// the page itself can reach a read-only CORS health endpoint. A successful
+// direct fetch does NOT imply that chat is authorized or working.
 async function checkHealth(){
-  r('lm-health').textContent='Checking…';
-  // In some Safari/Tampermonkey builds GM_xmlhttpRequest does not invoke its
-  // timeout callback. Use an independent watchdog so the UI never hangs.
+  const el=r('lm-health');
+  el.textContent='Checking Tampermonkey…';
+  r('lm-check-health').textContent='Checking…';
+  r('lm-check-health').disabled=true;
   let timer;
   try{
     const data=await Promise.race([
       sendMessage({type:'HEALTH'}),
-      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Connection timed out after checking localhost and 127.0.0.1')),11000);})
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Tampermonkey timed out')),9500);})
     ]);
-    r('lm-health').textContent=data?.ok?(data.configured?'Connected ✓':'Needs API key'): 'Offline';
-    r('lm-health').className=data?.ok&&data.configured?'lm-success':'lm-warning';
-    r('lm-model').textContent=data?.model||'—';r('lm-mini').className=data?.ok&&data.configured?'lm-success':'lm-warning';
-  }catch(e){
-    r('lm-health').textContent='Offline — '+(e?.message||'connection failed');
-    r('lm-mini').className='lm-warning';
-    r('lm-model').textContent='—';
-  }finally{clearTimeout(timer);}
+    el.textContent=data?.ok?(data.configured?'Connected ✓':'Needs API key'): 'Offline — invalid health response';
+    el.className=data?.ok&&data.configured?'lm-success':'lm-warning';
+    r('lm-model').textContent=data?.model||'—';
+    r('lm-mini').className=data?.ok&&data.configured?'lm-success':'lm-warning';
+  }catch(gmError){
+    el.textContent='Checking browser access…';
+    const controller=new AbortController();
+    const abortTimer=setTimeout(()=>controller.abort(),5000);
+    try{
+      const response=await fetch('http://127.0.0.1:8787/health',{signal:controller.signal,mode:'cors',cache:'no-store',credentials:'omit'});
+      const data=await response.json();
+      if(!response.ok || !data.ok)throw Error('HTTP '+response.status);
+      el.textContent='Browser reaches server; Tampermonkey is blocked';
+      r('lm-model').textContent=data?.model||'—';
+      setFeedback('Your AI server is healthy, but Tampermonkey cannot contact it. Chat is not connected yet.',true);
+    }catch(e){
+      const diagnostic=String(e?.message||e);
+      el.textContent='Offline — Safari local request blocked';
+      r('lm-model').textContent='—';
+      setFeedback('Tampermonkey: '+(gmError?.message||gmError)+'. Browser fetch: '+diagnostic+'. See Safari Console for CSP, CORS, or mixed-content errors.',true);
+    }finally{clearTimeout(abortTimer);}
+    el.className='lm-warning';r('lm-mini').className='lm-warning';
+  }finally{clearTimeout(timer);r('lm-check-health').disabled=false;r('lm-check-health').textContent='Check connection';}
 }
 r('lm-mini').addEventListener('click',()=>showView('about'));
 r('lm-check-health').addEventListener('click',checkHealth);
