@@ -3,7 +3,7 @@
 if (window.__lectureMateLoaded) return;
 window.__lectureMateLoaded = true;
 const ext = globalThis.browser || globalThis.chrome;
-const S = {open:true,view:'chat',width:460,history:[],notes:'',videoId:'',videoTitle:'',transcript:[],transcriptState:'Not loaded',waiting:false,listening:false,recognition:null,voiceEnabled:false,boards:[]};
+const S = {open:true,view:'chat',width:460,history:[],notes:'',videoId:'',videoTitle:'',transcript:[],transcriptState:'Not loaded',waiting:false,listening:false,recognition:null,voiceEnabled:false,boards:[],boardHidden:false,currentBoardVisual:null,currentBoardMessage:null};
 const $ = (id) => document.getElementById(id);
 const safeText = x => String(x ?? '');
 const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
@@ -53,8 +53,9 @@ const html = `
   <nav id="lm-tabs"><button data-view="chat" class="lm-selected">Chat</button><button data-view="course">Course material</button><button data-view="about">Settings</button></nav>
   <section id="lm-chat-view" class="lm-view">
     <div id="lm-messages" aria-live="polite"></div>
+    <div id="lm-board-reopen" hidden><button id="lm-board-show" type="button">▤ Show whiteboard</button></div>
     <div id="lm-board" class="lm-board" hidden>
-      <div class="lm-board-heading"><strong>Whiteboard</strong><button id="lm-board-hide">Hide</button></div>
+      <div class="lm-board-heading"><strong>Whiteboard</strong><span id="lm-teaching-progress"></span><button id="lm-board-hide">Hide</button></div>
       <div id="lm-board-body"></div>
     </div>
     <div id="lm-busy" hidden><span class="lm-spinner"></span> Thinking about your question…</div>
@@ -170,25 +171,71 @@ function addMessage(msg) {
   const label=create('div','lm-msg-label',msg.role==='user'?'You':'✦ Tutor');wrap.appendChild(label);
   const body=create('div','lm-msg-body');renderProse(body,msg.text||'');wrap.appendChild(body);
   if(msg.time!==undefined && msg.role==='user')wrap.appendChild(create('div','lm-msg-stamp','Asked at '+timeLabel(msg.time)));
+  if(msg.role==='assistant'){
+    const actions=create('div','lm-reply-actions');
+    const listen=create('button','lm-reply-action lm-listen-button','▶ Listen');
+    listen.type='button';listen.title='Hear this explanation, with whiteboard teaching steps';
+    listen._lmMessage=msg;
+    listen.addEventListener('click',()=>{
+      if(teacher?.isPlaying(msg))stopSpeech();
+      else playReply(msg);
+    });
+    actions.appendChild(listen);
+    if(globalThis.LectureMateTeacher?.isVisual(msg.visual)){
+      const diagram=create('button','lm-reply-action','▤ Whiteboard');
+      diagram.type='button';diagram.title='Open the whiteboard for this answer';
+      diagram.addEventListener('click',()=>showBoardForMessage(msg));
+      actions.appendChild(diagram);
+    }
+    wrap.appendChild(actions);
+  }
   r('lm-messages').appendChild(wrap);
   r('lm-messages').scrollTop=r('lm-messages').scrollHeight;
 }
-function renderMessages(){r('lm-messages').replaceChildren();if(!S.history.length){
-  const welcome=create('div','lm-welcome');welcome.appendChild(create('div','lm-welcome-icon','✦'));
-  welcome.appendChild(create('h3','', 'Your lecture, your questions.'));
-  welcome.appendChild(create('p','', 'Pause whenever you want. Ask by typing or speaking, and explore the ideas together.'));
-  welcome.appendChild(create('p','lm-muted','Try: “Can you explain the intuition behind this?” or “Draw a causal graph for this example.”'));
-  r('lm-messages').appendChild(welcome);
-  }else S.history.forEach(addMessage);
+function updateListenButtons(){
+  for(const button of root.querySelectorAll('.lm-listen-button')){
+    const speaking=teacher?.isPlaying(button._lmMessage)||false;
+    button.textContent=speaking?'■ Stop':'▶ Listen';
+    button.setAttribute('aria-pressed',String(speaking));
+    button.title=speaking?'Stop narration':'Listen to this explanation';
+  }
 }
-function renderBoard(visual){
-  if(!visual || !['dag','equation'].includes(visual.type))return;
+function refreshBoardAccess(){
+  r('lm-board-reopen').hidden=!S.currentBoardVisual || !S.boardHidden;
+}
+function renderMessages(){
+  r('lm-messages').replaceChildren();
+  if(!S.history.length){
+    const welcome=create('div','lm-welcome');welcome.appendChild(create('div','lm-welcome-icon','✦'));
+    welcome.appendChild(create('h3','', 'Your lecture, your questions.'));
+    welcome.appendChild(create('p','', 'Pause whenever you want. Ask by typing or speaking, and explore the ideas together.'));
+    welcome.appendChild(create('p','lm-muted','Try: “Can you explain the intuition behind this?” or “Draw a causal graph for this example.”'));
+    r('lm-messages').appendChild(welcome);
+  }else S.history.forEach(addMessage);
+  // The diagram can be reopened after a page reload or a later question.
+  if(!S.currentBoardVisual){
+    const latest=[...S.history].reverse().find(m=>m.role==='assistant' && globalThis.LectureMateTeacher?.isVisual(m.visual));
+    if(latest){S.currentBoardVisual=latest.visual;S.currentBoardMessage=latest;S.boardHidden=true;}
+  }
+  refreshBoardAccess();updateListenButtons();
+}
+function renderBoard(visual,index=0,total=0,done=true){
+  if(!globalThis.LectureMateTeacher?.isVisual(visual))return;
+  S.currentBoardVisual=visual;
   const board=r('lm-board-body');board.replaceChildren();
   board.appendChild(create('div','lm-diagram-title',visual.title||'Illustration'));
   if(visual.type==='equation'){
     const el=create('div','lm-equation',latexText(visual.latex));el.title=visual.latex||'';board.appendChild(el);
   }else drawDag(board,visual);
-  r('lm-board').hidden=false;
+  r('lm-teaching-progress').textContent=total && !done?'Teaching '+index+'/'+total:'';
+  r('lm-board').hidden=S.boardHidden;
+  refreshBoardAccess();
+}
+function showBoardForMessage(msg){
+  if(!globalThis.LectureMateTeacher?.isVisual(msg?.visual))return;
+  if(teacher?.isPlaying(msg))stopSpeech();
+  S.currentBoardMessage=msg;S.boardHidden=false;
+  renderBoard(msg.visual);
 }
 const NS='http://www.w3.org/2000/svg';
 function svgNode(tag,attrs={},text){const el=document.createElementNS(NS,tag);for(const [key,value] of Object.entries(attrs))el.setAttribute(key,String(value));if(text!==undefined)el.textContent=safeText(text);return el;}
@@ -218,13 +265,22 @@ function drawDag(host,data){
   if(data.latex){const math=create('div','lm-equation lm-after-dag',latexText(data.latex));math.title=data.latex;host.appendChild(math);}
 }
 
-function stopSpeech(){try{speechSynthesis.cancel();}catch(_){}}
-function readAloud(text){
-  if(!('speechSynthesis' in window)) {setFeedback('Spoken replies unavailable in this Safari version.',true);return;}
-  stopSpeech();const u=new SpeechSynthesisUtterance(safeText(text).replace(/\$+|\\[a-z]+/gi,'').slice(0,3000));u.rate=0.98;u.pitch=1;
-  const voices=speechSynthesis.getVoices();const english=voices.find(v=>v.lang.toLowerCase().startsWith('en-'));
-  if(english)u.voice=english;
-  speechSynthesis.speak(u);
+const teacher=globalThis.LectureMateTeacher?.createPlayer({
+  onFrame:(frame,index,total,done)=>renderBoard(frame,index,total,done),
+  onChange:(_msg,playing,index,total)=>{
+    updateListenButtons();
+    if(!playing)r('lm-teaching-progress').textContent='';
+  },
+  onError:message=>setFeedback(message,true)
+});
+function stopSpeech(){teacher?.stop();}
+function playReply(msg){
+  if(!teacher){setFeedback('Audio playback module is missing. Reload the Safari extension.',true);return;}
+  S.currentBoardMessage=msg;
+  if(globalThis.LectureMateTeacher?.isVisual(msg?.visual)){
+    S.boardHidden=false;
+  }
+  if(!teacher.play(msg))setFeedback('This reply has no spoken explanation.',true);
 }
 function setVoiceEnabled(enabled){S.voiceEnabled=!!enabled;r('lm-voice-toggle').checked=S.voiceEnabled;r('lm-speaker').classList.toggle('lm-on',S.voiceEnabled);r('lm-speaker').title=S.voiceEnabled?'Spoken replies on':'Spoken replies off';storageSet({lm_voice:S.voiceEnabled});if(!S.voiceEnabled)stopSpeech();}
 r('lm-speaker').addEventListener('click',()=>setVoiceEnabled(!S.voiceEnabled));
@@ -270,9 +326,11 @@ async function ask(fromVoice=false){
   try{
     const response=await sendMessage({type:'CHAT',payload:{question,history:previous,video:{id:S.videoId,title:S.videoTitle,time,url:location.href,transcript:S.transcript},playlistId:globalThis.LectureMatePlaylist?.currentId()||'',courseNotes:S.notes}});
     if(!response?.ok)throw Error(response?.error||'Tutor server did not respond');
-    const msg={role:'assistant',text:safeText(response.answer),spoken:safeText(response.spoken),visual:response.visual||{type:'none'}};
-    S.history.push(msg);addMessage(msg);renderBoard(msg.visual);
-    if(S.voiceEnabled||fromVoice)readAloud(msg.spoken||msg.text);
+    const msg={role:'assistant',text:safeText(response.answer),spoken:safeText(response.spoken),visual:response.visual||{type:'none'},teachingSteps:Array.isArray(response.teachingSteps)?response.teachingSteps:[]};
+    S.history.push(msg);addMessage(msg);
+    S.currentBoardMessage=msg;S.currentBoardVisual=null;S.boardHidden=false;
+    renderBoard(msg.visual);
+    if(S.voiceEnabled||fromVoice)playReply(msg);
     storageSet({['lm_history_'+S.videoId]:S.history.slice(-60)});
   }catch(e){
     const message=safeText(e.message||e);
@@ -281,7 +339,13 @@ async function ask(fromVoice=false){
 }
 r('lm-send').addEventListener('click',()=>ask(false));
 r('lm-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask(false);}});
-r('lm-board-hide').addEventListener('click',()=>r('lm-board').hidden=true);
+r('lm-board-hide').addEventListener('click',()=>{
+  S.boardHidden=true;r('lm-board').hidden=true;refreshBoardAccess();
+});
+r('lm-board-show').addEventListener('click',()=>{
+  if(!S.currentBoardVisual)return;
+  S.boardHidden=false;renderBoard(S.currentBoardVisual);
+});
 
 function currentVideoTitle(){return document.querySelector('ytd-watch-metadata h1 yt-formatted-string')?.textContent?.trim()||document.querySelector('h1.title yt-formatted-string')?.textContent?.trim()||document.title.replace(' - YouTube','');}
 // Shared with the native extension and the packaged userscript.
@@ -391,7 +455,7 @@ function updateTime(){r('lm-timestamp').textContent='At '+timeLabel(nowTime());}
 async function onNavigation(force=false){
   if(!isWatch()){updatePosition();return;}
   const current=videoId();if(current===S.videoId&&!force)return;
-  stopSpeech();S.videoId=current;S.videoTitle=currentVideoTitle();S.transcript=[];S.transcriptState='Looking for captions…';S.history=[];
+  stopSpeech();S.currentBoardVisual=null;S.currentBoardMessage=null;S.boardHidden=true;S.videoId=current;S.videoTitle=currentVideoTitle();S.transcript=[];S.transcriptState='Looking for captions…';S.history=[];
   const saved=await storageGet('lm_history_'+current);
   if(current!==S.videoId)return;
   S.history=Array.isArray(saved['lm_history_'+current])?saved['lm_history_'+current]:[];
