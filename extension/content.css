@@ -100,3 +100,16 @@ html.lm-active ytd-watch-flexy[theater] #full-bleed-container { max-width: calc(
 #lm-root #lm-about-view button {margin:12px 0 10px;}
 #lm-root #lm-about-view button.lm-danger {display:block;margin-top:23px;background:#fff3f3;color:#a34949;border-color:#efc4c4;}
 @media (max-width:900px) {#lm-root #lm-hint {display:none;} }
+
+/* Per-answer voice replay and reopenable whiteboard controls. */
+#lm-root .lm-reply-actions {display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:7px;}
+#lm-root .lm-reply-action {font:600 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:#edf3ff;color:#345b96;border:1px solid #d5e1f5;border-radius:7px;padding:6px 9px;cursor:pointer;}
+#lm-root .lm-reply-action:hover {background:#dfeaff;}
+#lm-root .lm-reply-action[aria-pressed="true"] {background:#feeef0;color:#af3851;border-color:#edc4cc;}
+#lm-root #lm-board-reopen {padding:7px 17px 9px 21px;flex-shrink:0;}
+#lm-root #lm-board-show {font:650 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:#eef4ff;border:1px solid #d3def2;border-radius:8px;color:#315b9b;padding:8px 12px;cursor:pointer;}
+#lm-root #lm-board-show:hover {background:#ddeaff;}
+#lm-root #lm-teaching-progress {margin-left:auto;margin-right:12px;text-transform:none;
+  letter-spacing:0;font-size:11px;color:#487bb4;}
