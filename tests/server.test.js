@@ -46,6 +46,9 @@ test('model request preserves the latest question, full lecture and future-cours
       history:[{role:'user',text:'What is confounding?'},{role:'assistant',text:'A common cause.'}]});
     assert.equal(response.answer,'Backdoor blocking!');
     assert.equal(response.spoken,'Block the backdoor path.');
+    assert.deepEqual(response.teachingSteps,[]);
+    assert.ok(requested.text.format.schema.required.includes('teachingSteps'));
+    assert.ok(requested.text.format.schema.properties.teachingSteps.items.required.includes('visual'));
     const last=requested.input.at(-1).content;
     assert.match(last,/STUDENT QUESTION: How do we block backdoor paths/);
     assert.match(last,/A confounder is a common cause/);
