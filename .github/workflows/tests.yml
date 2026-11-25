@@ -20,4 +20,4 @@ jobs:
         run: |
           node scripts/build-userscript.js
           node --check dist/LectureMate.user.js
-          git diff --exit-code -- dist/LectureMate.user.js
+          git diff --exit-code -- dist/LectureMate.user.js dist/LectureMate.meta.js
