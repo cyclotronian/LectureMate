@@ -73,7 +73,7 @@ const html = `
   </section>
   <section id="lm-course-view" class="lm-view" hidden>
     <h3>Full course context</h3>
-    <p>The tutor can use the entire current lecture when captions are accessible, plus any course materials you add here — including future lectures.</p>
+    <p>The tutor automatically reads YouTube’s built-in transcript when available (including timestamps). If it can’t open the transcript automatically, click “Show transcript” on YouTube and then “Retry captions” in Settings. You can also add materials from later lectures here.</p>
     <label for="lm-notes">Paste syllabus, slides, transcripts, or notes</label>
     <textarea id="lm-notes" rows="12" placeholder="Paste the course outline, lesson transcripts, notes, or reading material here…"></textarea>
     <div class="lm-course-actions"><label class="lm-file-button">Add .txt / .md / .srt / .vtt <input type="file" id="lm-file" accept=".txt,.md,.srt,.vtt,text/plain,text/markdown" multiple hidden></label><button id="lm-save-notes">Save context</button></div>
@@ -284,11 +284,9 @@ r('lm-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.
 r('lm-board-hide').addEventListener('click',()=>r('lm-board').hidden=true);
 
 function currentVideoTitle(){return document.querySelector('ytd-watch-metadata h1 yt-formatted-string')?.textContent?.trim()||document.querySelector('h1.title yt-formatted-string')?.textContent?.trim()||document.title.replace(' - YouTube','');}
-function parseTime(time){let n=0;for(const s of time.split(':')) n=n*60+(Number(s)||0);return n;}
-function transcriptFromDOM(){
-  const els=[...document.querySelectorAll('ytd-transcript-segment-renderer')];
-  return els.map(el=>({start:parseTime(el.querySelector('.segment-timestamp')?.textContent?.trim()||'0'),text:el.querySelector('.segment-text')?.textContent?.trim()||''})).filter(el=>el.text);
-}
+// Shared with the native extension and the packaged userscript.
+const Transcript = globalThis.LectureMateTranscript;
+function transcriptFromDOM(){return Transcript.readRows(document);}
 function extractObject(text,searchIndex){
   const start=text.indexOf('{',searchIndex);if(start<0)return null;
   let depth=0,inString=false,escape=false;
@@ -318,35 +316,74 @@ function findPlayerResponse(){
   return null;
 }
 async function loadCaptions(){
-  S.transcript=[];S.transcriptState='Looking for captions…';updateContextStatus();
   const currentId=S.videoId;
+  S.transcript=[];S.transcriptState='Reading YouTube transcript…';updateContextStatus();
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const current=()=>S.videoId===currentId;
+  let segments=transcriptFromDOM(),openedByUs=false;
+  // YouTube changed its transcript rows in late 2026. Prefer the transcript
+  // displayed by its own UI, instead of downloading undocumented timedtext URLs.
+  if(!segments.length){
+    for(let trial=0;trial<3 && current() && !segments.length;trial++){
+      let show=Transcript.showButton(document);
+      if(!show && trial===0){
+        const expand=Transcript.expandDescription(document);
+        if(expand){expand.click();await sleep(450);}
+        show=Transcript.showButton(document);
+      }
+      if(show && !openedByUs){
+        show.click();openedByUs=true;
+      }
+      for(let attempt=0;attempt<9 && current();attempt++){
+        await sleep(350);
+        segments=transcriptFromDOM();
+        if(segments.length){
+          await sleep(350); // Allow YouTube's final transcript rows to settle.
+          const settled=transcriptFromDOM();
+          if(settled.length>=segments.length)segments=settled;
+          break;
+        }
+      }
+    }
+  }
+  if(!current())return;
+  if(segments.length){
+    S.transcript=segments;
+    S.transcriptState='YouTube transcript: '+segments.length+' timestamped segments';
+    updateContextStatus();
+    if(openedByUs)Transcript.closePanel(document);
+    return;
+  }
+
+  // Fall back to the original caption-track approach if YouTube did not expose
+  // its own transcript panel. Signed timedtext URLs may now return empty bodies.
+  S.transcriptState='Transcript panel unavailable; checking caption track…';
+  updateContextStatus();
   let tracks=[];
-  for(let trial=0;trial<4;trial++){
+  for(let trial=0;trial<2;trial++){
     const player=findPlayerResponse();
     tracks=player?.captions?.playerCaptionsTracklistRenderer?.captionTracks||[];
     if(tracks.length)break;
-    if(trial<3)await new Promise(r=>setTimeout(r,900));
-    if(currentId!==S.videoId)return;
-  }
-  if(currentId!==S.videoId)return;
-  if(!tracks.length){
-    S.transcript=transcriptFromDOM();
-    S.transcriptState=S.transcript.length?`Transcript: ${S.transcript.length} segments`:'Captions unavailable — title/time only';
-    updateContextStatus();return;
+    if(trial<1)await sleep(600);
+    if(!current())return;
   }
   tracks.sort((a,b)=>Number((b.languageCode||'').startsWith('en'))-Number((a.languageCode||'').startsWith('en')));
-  for(const track of tracks.slice(0,4)){
+  for(const track of tracks.slice(0,2)){
     try{
       const response=await sendMessage({type:'CAPTIONS',url:track.baseUrl});
-      if(currentId!==S.videoId)return;
+      if(!current())return;
       if(response?.ok && Array.isArray(response.segments) && response.segments.length){
-        S.transcript=response.segments;S.transcriptState=`Captions: ${S.transcript.length} segments`;
+        S.transcript=response.segments;
+        S.transcriptState='Captions: '+S.transcript.length+' timestamped segments';
         updateContextStatus();return;
       }
-    } catch(_){}
+    }catch(_){}
   }
+  if(!current())return;
   S.transcript=transcriptFromDOM();
-  S.transcriptState=S.transcript.length?`Transcript: ${S.transcript.length} segments`:'Auto-captions blocked — add notes';
+  S.transcriptState=S.transcript.length
+    ?'YouTube transcript: '+S.transcript.length+' timestamped segments'
+    :'Transcript unavailable — open YouTube “Show transcript”, then Retry captions';
   updateContextStatus();
 }
 function updateContextStatus(){r('lm-context').textContent=S.transcriptState;r('lm-context').title=S.transcriptState;r('lm-caption-stat').textContent=S.transcriptState;}
@@ -449,7 +486,7 @@ setInterval(()=>{
   if(videoId()!==S.videoId)onNavigation();
   updateTime();
   const title=currentVideoTitle();if(title!==S.videoTitle){S.videoTitle=title;r('lm-title').textContent=title;}
-  if(!S.transcript.length){const seg=transcriptFromDOM();if(seg.length){S.transcript=seg;S.transcriptState=`Transcript: ${seg.length} segments`;updateContextStatus();}}
+  if(!S.transcript.length){const seg=transcriptFromDOM();if(seg.length){S.transcript=seg;S.transcriptState='YouTube transcript: '+seg.length+' timestamped segments';updateContextStatus();}}
 },2500);
 init();
 })();
