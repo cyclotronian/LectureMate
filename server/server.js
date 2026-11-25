@@ -4,6 +4,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const process = require('node:process');
+const playlistIndex = require('./playlist-store');
 
 function loadDotEnv() {
   const p = path.join(__dirname,'.env');
@@ -81,6 +82,7 @@ function makeContext(p) {
     `Captions available: ${seg.length?'yes':'no'}`,
     `NEARBY VIDEO CAPTIONS:\n${nearCaptions(seg,Number(video.time)||0)||'(Not available)'}`,
     `FULL VIDEO CONTEXT (or relevance-selected excerpts if long):\n${relevantParts(full,q,26000)||'(Not available)'}`,
+    `OTHER VIDEOS IN THIS PLAYLIST (include earlier and future lessons where indexed):\n${playlistIndex.validPlaylistId(p.playlistId) ? playlistIndex.relevantContext(p.playlistId,q,18000) : '(Not playing from a playlist)'}`,
     `OTHER COURSE MATERIALS (may include later lessons):\n${relevantParts(p.courseNotes,q,23000)||'(No additional course materials supplied)'}`
   ].join('\n\n');
 }
@@ -134,13 +136,36 @@ async function requestOpenAI(payload) {
 }
 const server=http.createServer(async (req,res)=>{
   const origin=req.headers.origin||'';
-  const pathname=new URL(req.url,'http://127.0.0.1').pathname;
+  const incomingUrl=new URL(req.url,'http://127.0.0.1');
+  const pathname=incomingUrl.pathname;
   const publicHealth=pathname==='/health';
   if (!isAllowedOrigin(origin) && !(publicHealth && origin==='https://www.youtube.com'))
     return sendJSON(res,403,{ok:false,error:'Browser origin is not allowed'},origin);
   if (req.method==='OPTIONS') return sendJSON(res,204,{},origin,publicHealth);
   if (req.method==='GET' && publicHealth)
     return sendJSON(res,200,{ok:true,configured:!!API_KEY,model:MODEL},origin,true);
+  if (req.method==='GET' && pathname==='/api/playlist/status') {
+    try{
+      return sendJSON(res,200,playlistIndex.status(incomingUrl.searchParams.get('list')),origin);
+    }catch(e){return sendJSON(res,400,{ok:false,error:e.message},origin);}
+  }
+  if (req.method==='POST' && pathname==='/api/playlist/sync') {
+    if (!String(req.headers['content-type']||'').startsWith('application/json'))
+      return sendJSON(res,415,{ok:false,error:'Content-Type must be application/json'},origin);
+    try{
+      const data=await readBody(req);
+      const snapshot=playlistIndex.upsert(data);
+      return sendJSON(res,200,snapshot,origin);
+    }catch(e){return sendJSON(res,400,{ok:false,error:e.message},origin);}
+  }
+  if (req.method==='POST' && pathname==='/api/playlist/retry') {
+    try{
+      const data=await readBody(req);
+      if(!playlistIndex.validPlaylistId(data.playlistId))throw Error('Invalid playlist ID');
+      playlistIndex.startIndexing(data.playlistId,true);
+      return sendJSON(res,200,playlistIndex.status(data.playlistId),origin);
+    }catch(e){return sendJSON(res,400,{ok:false,error:e.message},origin);}
+  }
   if (req.method==='POST' && pathname==='/api/chat') {
     if (!String(req.headers['content-type']||'').startsWith('application/json'))
       return sendJSON(res,415,{ok:false,error:'Content-Type must be application/json'},origin);
