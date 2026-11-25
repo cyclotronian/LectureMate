@@ -23,6 +23,19 @@ try {
 } catch (_) { /* Safari versions without toolbar click support retain in-page toggle. */ }
 
 async function health() {
+  // Safari requires an explicit website grant even for declared host permissions.
+  // A permission check is more actionable than a generic "Load failed".
+  try {
+    if (platform.permissions?.contains) {
+      const hasAccess = await platform.permissions.contains({origins:['http://127.0.0.1/*']});
+      if (hasAccess === false) {
+        return {ok:false,transport:'Safari Web Extension',
+          error:'Safari has not granted LectureMate access to 127.0.0.1. Open Safari Settings → Extensions → LectureMate → Edit Websites and allow 127.0.0.1.'};
+      }
+    }
+  } catch (e) {
+    console.warn('[LectureMate] Could not inspect host permission:',e?.message||e);
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
   try {
