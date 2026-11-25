@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LectureMate - AI Video Tutor
 // @namespace    https://github.com/cyclotronian/LectureMate
-// @version      0.1.0
+// @version      0.1.1
 // @description  Ask contextual questions by typing or voice beside YouTube; get visual explanations.
 // @match        https://www.youtube.com/*
 // @run-at       document-end
@@ -126,7 +126,12 @@ const html = `
     <p class="lm-small">No visual frame recognition yet; the first version sees title, timestamp, captions where YouTube provides them, and pasted course materials.</p>
   </section>
 </div>`;
-const root=document.createElement('div'); root.id='lm-root'; root.innerHTML=html; document.body.appendChild(root);
+// YouTube enforces Trusted Types for innerHTML. This markup is a static,
+ // bundled LectureMate template (never user- or model-supplied HTML).
+const trustedMarkup = globalThis.trustedTypes?.createPolicy
+  ? globalThis.trustedTypes.createPolicy('lecturemate-static-ui-v011', {createHTML: value => value}).createHTML(html)
+  : html;
+const root=document.createElement('div'); root.id='lm-root'; root.innerHTML=trustedMarkup; document.body.appendChild(root);
 const r=id=>root.querySelector('#'+id);
 function setFeedback(message='',isError=false) {r('lm-feedback').textContent=message;r('lm-feedback').classList.toggle('lm-error',isError);}
 function updatePosition() {
