@@ -76,8 +76,9 @@ const updatedPrefix=prefix.replace('const ext = globalThis.browser || globalThis
   'const style=document.createElement("style");style.textContent='+JSON.stringify(css)+';document.documentElement.appendChild(style);');
 if (prefix===updatedPrefix) throw Error('Could not replace extension runtime in userscript');
 const body=updatedPrefix+helpers+suffix;
-const updateURL=process.env.LECTUREMATE_USERSCRIPT_URL || 'https://raw.githubusercontent.com/cyclotronian/LectureMate/main/dist/LectureMate.user.js';
-if (updateURL && !/^https:\/\//.test(updateURL)) throw Error('LECTUREMATE_USERSCRIPT_URL must be HTTPS');
+const downloadURL=process.env.LECTUREMATE_USERSCRIPT_URL || 'https://raw.githubusercontent.com/cyclotronian/LectureMate/main/dist/LectureMate.user.js';
+const updateURL=process.env.LECTUREMATE_UPDATE_METADATA_URL || 'https://raw.githubusercontent.com/cyclotronian/LectureMate/main/dist/LectureMate.meta.js';
+if (!/^https:\/\//.test(downloadURL) || !/^https:\/\//.test(updateURL)) throw Error('Userscript URLs must be HTTPS');
 const metadata=[
   '// ==UserScript==',
   '// @name         LectureMate - AI Video Tutor',
@@ -91,10 +92,13 @@ const metadata=[
   '// @grant        GM_xmlhttpRequest',
   '// @connect      127.0.0.1',
   '// @connect      www.youtube.com',
-  ...(updateURL?['// @updateURL    '+updateURL,'// @downloadURL  '+updateURL]:[]),
+  '// @updateURL    '+updateURL,
+  '// @downloadURL  '+downloadURL,
   '// ==/UserScript==','',
 ];
 const result=metadata.join('\n')+body+'\n';
 const out=path.join(root,'dist/LectureMate.user.js');
 fs.writeFileSync(out,result,'utf8');
-console.log(`Built ${path.relative(root,out)} (${result.length} bytes, v${version}; auto-update ${updateURL?'configured':'requires a public GitHub URL'})`);
+const meta=path.join(root,'dist/LectureMate.meta.js');
+fs.writeFileSync(meta,metadata.join('\n'),'utf8');
+console.log(`Built ${path.relative(root,out)} and ${path.relative(root,meta)} (v${version}; GitHub update metadata configured)`);
